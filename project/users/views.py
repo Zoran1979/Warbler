@@ -1,7 +1,8 @@
 from flask import redirect, render_template, request, url_for, Blueprint, flash
 from project.users.models import User
-from project.users.forms import UserForm, LoginForm
+from project.users.forms import UserEditForm, UserForm, LoginForm
 from project import db
+from project.messages.models import Message
 from sqlalchemy.exc import IntegrityError
 from flask_login import login_user, logout_user, current_user, login_required
 from functools import wraps
@@ -41,8 +42,6 @@ def signup():
                     username=form.username.data,
                     email=form.email.data,
                     password=form.password.data)
-                if form.image_url.data:
-                    new_user.image_url = form.image_url.data
                 db.session.add(new_user)
                 db.session.commit()
                 login_user(new_user)
@@ -85,14 +84,14 @@ def logout():
 @ensure_correct_user
 def edit(id):
     return render_template(
-        'users/edit.html', form=UserForm(), user=User.query.get(id))
+        'users/edit.html', form=UserEditForm(), user=User.query.get_or_404(id))
 
 
 @users_blueprint.route(
     '/<int:follower_id>/follower', methods=['POST', 'DELETE'])
 @login_required
 def follower(follower_id):
-    followed = User.query.get(follower_id)
+    followed = User.query.get_or_404(follower_id)
     if request.method == 'POST':
         current_user.following.append(followed)
     else:
@@ -114,19 +113,39 @@ def followers(id):
     return render_template('users/followers.html', user=User.query.get(id))
 
 
+@users_blueprint.route('/<int:id>/likes', methods=['GET'])
+@login_required
+def likes(id):
+    ids = [msg.id for msg in User.query.get_or_404(id).message_likes]
+    messages = Message.query.filter(
+        Message.id.in_(ids)).order_by('timestamp desc').limit(100)
+    return render_template(
+        'users/likes.html', user=User.query.get_or_404(id), messages=messages)
+
+
 @users_blueprint.route('/<int:id>', methods=["GET", "PATCH", "DELETE"])
 def show(id):
-    found_user = User.query.get(id)
+    found_user = User.query.get_or_404(id)
     if (request.method == 'GET' or current_user.is_anonymous
             or current_user.get_id() != str(id)):
-        return render_template('users/show.html', user=found_user)
+
+        ids = [found_user.id] + [user.id for user in found_user.following]
+        messages = Message.query.filter(
+            Message.user_id.in_(ids)).order_by('timestamp desc').limit(100)
+
+        return render_template(
+            'users/show.html', user=found_user, messages=messages)
     if request.method == b"PATCH":
-        form = UserForm(request.form)
+        form = UserEditForm(request.form)
         if form.validate():
             if User.authenticate(found_user.username, form.password.data):
                 found_user.username = form.username.data
                 found_user.email = form.email.data
+                found_user.full_name = form.full_name.data or None
+                found_user.bio = form.bio.data or None
+                found_user.location = form.location.data or None
                 found_user.image_url = form.image_url.data or None
+                found_user.header_image_url = form.header_image_url.data or None
                 db.session.add(found_user)
                 db.session.commit()
                 return redirect(url_for('users.show', id=id))

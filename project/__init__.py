@@ -5,6 +5,7 @@ from flask_bcrypt import Bcrypt
 from flask_login import LoginManager
 from flask_debugtoolbar import DebugToolbarExtension
 import os
+from flask_migrate import Migrate
 
 app = Flask(__name__)
 
@@ -25,6 +26,7 @@ modus = Modus(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 from project.users.views import users_blueprint
 from project.messages.views import messages_blueprint
@@ -58,3 +60,8 @@ def add_header(r):
     r.headers["Expires"] = "0"
     r.headers['Cache-Control'] = 'public, max-age=0'
     return r
+
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html')

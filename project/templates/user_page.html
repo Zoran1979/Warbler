@@ -1,6 +1,13 @@
 {% extends 'base.html' %}
 {% block content %}
-<div id="warbler-hero" class="full-width"></div>
+
+{% if user.header_image_url != None %}
+    <div id="warbler-hero" style="background-image:url('{{ user.header_image_url }}')" class="full-width"></div>
+{% else %}
+    <div id="warbler-hero" class="full-width"></div>
+{% endif %}
+
+
 <img src="{{ user.image_url }}" alt="Image for {{ user.username }}" id="profile-avatar">
 <div class="row full-width">
   <div class="container">
@@ -27,7 +34,11 @@
           </li>
           <li class="stat">
             <p class="small">Likes</p>
-            <h4>TBD</h4>
+            
+                <h4>
+                    <a href="{{ url_for('users.likes', id=user.id) }}">{{ user.message_likes|length }}</a>
+                  </h4>
+          
           </li>
           <div class="ml-auto">
             {% if current_user.id == user.id %}
@@ -52,10 +63,29 @@
 </div>
 <div class="row">
   <div class="col-sm-3">
-    <h4 id="sidebar-username">@{{ user.username }}</h4>
+    <h5 id="sidebar-username">@{{ user.username }}</h5>
+
+    {% if user.full_name %}
+    <h6 class="mt-2 mb-1" >Name:</h6>
+    <h5 class="mt-2" id="sidebar-full_name">{{ user.full_name }}</h5>
+    {% endif %}
+
+    {% if user.location %}
+    <h6 class="mt-2 mb-1" >Location:</h6>
+    <h5 class="mt-2" id="sidebar-location">{{ user.location }}</h5>
+    {% endif %}
+
+    {% if user.bio %}
+    <h6 class="mt-2 mb-1" >Bio:</h6>
+    <h6 class="mt-2" id="sidebar-bio">{{ user.bio }}</h6>
+    {% endif %}
+
   </div>
   {% block user_details %}
   {% endblock %}
 </div>
 </div>
 {% endblock %}
+
+
+
